@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Optional, List
 import time
 from server import mcp
-from utils.path_utils import resolve_path
+from utils.path_utils import resolve_path, validate_image_path
 from utils.openai_client import (
     get_openai_client, 
     validate_image_generation_params,
@@ -20,7 +20,7 @@ def generate_image(
     size: Optional[str] = None,
     quality: Optional[str] = None,
     style: Optional[str] = None,
-    n: Optional[int] = 1,
+    n: int = 1,
     output_dir: str = "./generated_images",
     filename_prefix: str = "generated"
 ) -> str:
@@ -145,7 +145,7 @@ def edit_image(
     model: str = "gpt-image-1",
     size: Optional[str] = None,
     quality: Optional[str] = None,
-    n: Optional[int] = 1,
+    n: int = 1,
     output_dir: str = "./edited_images",
     filename_prefix: str = "edited"
 ) -> str:
@@ -185,13 +185,18 @@ def edit_image(
         if len(prompt) > max_prompt_lengths.get(model, 1000):
             return f"Error: Prompt too long for {model}. Maximum length: {max_prompt_lengths[model]} characters"
         
-        # Resolve and validate image path
-        resolved_image_path = resolve_path(image_path)
-        if not resolved_image_path.exists():
-            return f"Error: Image file '{image_path}' not found"
+        # Validate image path with clear error messages
+        is_valid, error_message, resolved_image_path = validate_image_path(image_path, "read")
+        if not is_valid:
+            return error_message
         
         if not is_valid_image_format(resolved_image_path):
-            return f"Error: '{image_path}' is not a supported image format"
+            return (
+                f"Error: Unsupported image format.\n"
+                f"• File: '{image_path}'\n"
+                f"• Supported formats: PNG, JPEG, JPG, GIF, WebP\n"
+                f"• Suggestion: Convert the image to a supported format or use a different image file."
+            )
         
         # Prepare image for upload
         image_data = prepare_image_for_upload(resolved_image_path, model)
@@ -328,7 +333,7 @@ def edit_image(
 @mcp.tool()
 def create_image_variations(
     image_path: str,
-    n: Optional[int] = 2,
+    n: int = 2,
     size: Optional[str] = "1024x1024",
     output_dir: str = "./image_variations",
     filename_prefix: str = "variation"
@@ -356,25 +361,43 @@ def create_image_variations(
         if size and size not in valid_sizes:
             return f"Error: Invalid size '{size}'. Must be one of: {', '.join(valid_sizes)}"
         
-        # Resolve and validate image path
-        resolved_image_path = resolve_path(image_path)
-        if not resolved_image_path.exists():
-            return f"Error: Image file '{image_path}' not found"
+        # Validate image path with clear error messages
+        is_valid, error_message, resolved_image_path = validate_image_path(image_path, "read")
+        if not is_valid:
+            return error_message
         
-        # Validate image format and requirements
+        # Validate image format and requirements for DALL-E 2 variations
         if resolved_image_path.suffix.lower() != '.png':
-            return "Error: Image variations require PNG format"
+            return (
+                f"Error: Unsupported format for image variations.\n"
+                f"• File: '{image_path}'\n"
+                f"• Current format: {resolved_image_path.suffix.upper()}\n"
+                f"• Required format: PNG\n"
+                f"• Suggestion: Convert the image to PNG format using an image editor."
+            )
         
         # Check file size (4MB limit for dall-e-2)
         file_size = resolved_image_path.stat().st_size
         if file_size > 4 * 1024 * 1024:
-            return f"Error: Image too large ({file_size:,} bytes). Maximum size is 4,194,304 bytes (4MB)"
+            return (
+                f"Error: Image file too large for variations.\n"
+                f"• File: '{image_path}'\n"
+                f"• Current size: {file_size:,} bytes ({file_size / 1024 / 1024:.1f} MB)\n"
+                f"• Maximum size: 4,194,304 bytes (4.0 MB)\n"
+                f"• Suggestion: Compress or resize the image to reduce file size."
+            )
         
         # Check if image is square
         from PIL import Image
         with Image.open(resolved_image_path) as img:
             if img.size[0] != img.size[1]:
-                return f"Error: Image must be square. Current size: {img.size[0]}x{img.size[1]}"
+                return (
+                    f"Error: Image must be square for variations.\n"
+                    f"• File: '{image_path}'\n"
+                    f"• Current dimensions: {img.size[0]}x{img.size[1]} pixels\n"
+                    f"• Required: Square dimensions (width = height)\n"
+                    f"• Suggestion: Crop or resize the image to make it square (e.g., 1024x1024)."
+                )
         
         # Create output directory
         output_path = Path(output_dir)

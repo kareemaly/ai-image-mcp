@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 from server import mcp
-from utils.path_utils import resolve_path
+from utils.path_utils import resolve_path, validate_image_path
 from utils.openai_client import get_openai_client, encode_image_to_base64, is_valid_image_format, get_image_info
 from utils.cache_utils import get_cache
 
@@ -85,16 +85,18 @@ def describe_image(image_path: str, prompt: str = "Please describe this image in
         Detailed description of the image content
     """
     try:
-        # Resolve and validate image path
-        resolved_path = resolve_path(image_path)
-        if not resolved_path.exists():
-            return f"Error: Image file '{image_path}' not found at {resolved_path}"
-        
-        if not resolved_path.is_file():
-            return f"Error: '{image_path}' is not a file"
+        # Validate image path with clear error messages
+        is_valid, error_message, resolved_path = validate_image_path(image_path, "read")
+        if not is_valid:
+            return error_message
         
         if not is_valid_image_format(resolved_path):
-            return f"Error: '{image_path}' is not a supported image format (supported: PNG, JPEG, GIF, WebP)"
+            return (
+                f"Error: Unsupported image format for analysis.\n"
+                f"• File: '{image_path}'\n"
+                f"• Supported formats: PNG, JPEG, JPG, GIF, WebP\n"
+                f"• Suggestion: Convert the image to a supported format or use a different image file."
+            )
         
         # Use cached analysis
         params = {"prompt": prompt}
@@ -129,16 +131,18 @@ def analyze_image_content(image_path: str, analysis_type: str = "general") -> st
         return f"Error: Invalid analysis type. Choose from: {', '.join(prompts.keys())}"
     
     try:
-        # Resolve and validate image path
-        resolved_path = resolve_path(image_path)
-        if not resolved_path.exists():
-            return f"Error: Image file '{image_path}' not found at {resolved_path}"
-        
-        if not resolved_path.is_file():
-            return f"Error: '{image_path}' is not a file"
+        # Validate image path with clear error messages
+        is_valid, error_message, resolved_path = validate_image_path(image_path, "read")
+        if not is_valid:
+            return error_message
         
         if not is_valid_image_format(resolved_path):
-            return f"Error: '{image_path}' is not a supported image format (supported: PNG, JPEG, GIF, WebP)"
+            return (
+                f"Error: Unsupported image format for analysis.\n"
+                f"• File: '{image_path}'\n"
+                f"• Supported formats: PNG, JPEG, JPG, GIF, WebP\n"
+                f"• Suggestion: Convert the image to a supported format or use a different image file."
+            )
         
         # Use cached analysis
         prompt = prompts[analysis_type]
@@ -191,12 +195,10 @@ def get_image_metadata(image_path: str) -> str:
         Technical metadata and information about the image
     """
     try:
-        resolved_path = resolve_path(image_path)
-        if not resolved_path.exists():
-            return f"Error: Image file '{image_path}' not found at {resolved_path}"
-        
-        if not resolved_path.is_file():
-            return f"Error: '{image_path}' is not a file"
+        # Validate image path with clear error messages
+        is_valid, error_message, resolved_path = validate_image_path(image_path, "read")
+        if not is_valid:
+            return error_message
         
         # Get comprehensive image info
         image_info = get_image_info(resolved_path)
