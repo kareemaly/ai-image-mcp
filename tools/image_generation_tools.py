@@ -147,7 +147,8 @@ def edit_image(
     quality: Optional[str] = None,
     n: int = 1,
     output_dir: str = "./edited_images",
-    filename_prefix: str = "edited"
+    filename_prefix: str = "edited",
+    working_directory: str = None
 ) -> str:
     """
     Edit or extend existing images using OpenAI's image editing capabilities.
@@ -163,6 +164,7 @@ def edit_image(
         n: Number of edited images to generate (1-10)
         output_dir: Directory to save edited images
         filename_prefix: Prefix for edited image filenames
+        working_directory: Base directory for resolving relative paths (optional, defaults to current PWD)
     
     Returns:
         Information about the edited images and their file paths
@@ -186,7 +188,7 @@ def edit_image(
             return f"Error: Prompt too long for {model}. Maximum length: {max_prompt_lengths[model]} characters"
         
         # Validate image path with clear error messages
-        is_valid, error_message, resolved_image_path = validate_image_path(image_path, "read")
+        is_valid, error_message, resolved_image_path = validate_image_path(image_path, "read", working_directory)
         if not is_valid:
             return error_message
         
@@ -336,7 +338,8 @@ def create_image_variations(
     n: int = 2,
     size: Optional[str] = "1024x1024",
     output_dir: str = "./image_variations",
-    filename_prefix: str = "variation"
+    filename_prefix: str = "variation",
+    working_directory: str = None
 ) -> str:
     """
     Create variations of an existing image using DALL-E 2.
@@ -348,6 +351,7 @@ def create_image_variations(
         size: Size of generated variations ("256x256", "512x512", or "1024x1024")
         output_dir: Directory to save variation images
         filename_prefix: Prefix for variation image filenames
+        working_directory: Base directory for resolving relative paths (optional, defaults to current PWD)
     
     Returns:
         Information about the generated variations and their file paths
@@ -362,7 +366,7 @@ def create_image_variations(
             return f"Error: Invalid size '{size}'. Must be one of: {', '.join(valid_sizes)}"
         
         # Validate image path with clear error messages
-        is_valid, error_message, resolved_image_path = validate_image_path(image_path, "read")
+        is_valid, error_message, resolved_image_path = validate_image_path(image_path, "read", working_directory)
         if not is_valid:
             return error_message
         
