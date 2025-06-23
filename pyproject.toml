@@ -1,0 +1,12 @@
+[project]
+name = "ai-image-mcp"
+version = "0.1.0"
+description = "A Model Context Protocol (MCP) server for AI-powered image analysis using OpenAI's Vision API"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "mcp[cli]>=1.9.4",
+    "openai>=1.90.0",
+    "pillow>=11.2.1",
+    "requests>=2.32.4",
+]

@@ -1,0 +1,1 @@
+# Tools package for AI Image Description MCP 
