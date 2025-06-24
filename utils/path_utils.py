@@ -2,26 +2,26 @@ from pathlib import Path
 from typing import Tuple, Optional
 import os
 
-def resolve_path(file_path: str, base_dir: Optional[str] = None) -> Path:
+def resolve_path(file_path: str, base_dir: str) -> Path:
     """
     Handle both relative and absolute paths for image files.
     
     Args:
         file_path: Path to the image file, can be:
-            - Relative path: "test_data/image.jpg" (resolved relative to base_dir or PWD)  
+            - Relative path: "test_data/image.jpg" (resolved relative to base_dir)  
             - Absolute path: "/home/user/images/image.jpg" (used as-is)
-        base_dir: Base directory for resolving relative paths (defaults to current PWD)
+        base_dir: Base directory for resolving relative paths (required)
     
     Returns:
         Path: Resolved absolute Path object
         
     Examples:
         # Relative path (resolved from client's working directory)
-        resolve_path("test_data/logo.jpg")
+        resolve_path("test_data/logo.jpg", "/client/working/directory")
         # Returns: /client/working/directory/test_data/logo.jpg
         
         # Absolute path (used as-is)
-        resolve_path("/home/user/images/logo.jpg") 
+        resolve_path("/home/user/images/logo.jpg", "/any/base/dir") 
         # Returns: /home/user/images/logo.jpg
         
         # Relative path with explicit base directory
@@ -32,14 +32,8 @@ def resolve_path(file_path: str, base_dir: Optional[str] = None) -> Path:
     if path.is_absolute():
         return path
     
-    # For relative paths, use provided base_dir or current working directory
-    if base_dir:
-        base = Path(base_dir)
-    else:
-        # Try to get the actual PWD from environment, fallback to process cwd
-        pwd = os.environ.get('PWD') or os.getcwd()
-        base = Path(pwd)
-    
+    # For relative paths, use provided base_dir
+    base = Path(base_dir)
     return base / path
 
 def get_client_working_directory() -> str:
@@ -57,7 +51,7 @@ def get_client_working_directory() -> str:
     # Fallback to process working directory
     return os.getcwd()
 
-def validate_image_path(file_path: str, operation: str = "access", base_dir: Optional[str] = None) -> Tuple[bool, Optional[str], Optional[Path]]:
+def validate_image_path(file_path: str, operation: str = "access", base_dir: str = None) -> Tuple[bool, Optional[str], Optional[Path]]:
     """
     Validate image path with clear error messages for AI agents.
     
@@ -86,7 +80,7 @@ def validate_image_path(file_path: str, operation: str = "access", base_dir: Opt
         effective_base = None
     
     try:
-        resolved_path = resolve_path(file_path.strip(), base_dir)
+        resolved_path = resolve_path(file_path.strip(), effective_base)
         
         # For read operations, check if file exists
         if operation == "read" or operation == "access":

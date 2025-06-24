@@ -141,14 +141,14 @@ def generate_image(
 def edit_image(
     image_path: str,
     prompt: str,
+    working_directory: str,
     mask_path: Optional[str] = None,
     model: str = "gpt-image-1",
     size: Optional[str] = None,
     quality: Optional[str] = None,
     n: int = 1,
     output_dir: str = "./edited_images",
-    filename_prefix: str = "edited",
-    working_directory: str = None
+    filename_prefix: str = "edited"
 ) -> str:
     """
     Edit or extend existing images using OpenAI's image editing capabilities.
@@ -157,6 +157,7 @@ def edit_image(
     Args:
         image_path: Path to the image to edit (PNG, WebP, JPG for gpt-image-1; PNG for dall-e-2)
         prompt: Description of the desired edit (max 32000 chars for gpt-image-1, 1000 for dall-e-2)
+        working_directory: Base directory for resolving relative paths (required)
         mask_path: Optional path to mask image (PNG with transparent areas indicating edit regions)
         model: Model to use - "gpt-image-1" or "dall-e-2" (default: gpt-image-1)
         size: Output image size
@@ -164,7 +165,6 @@ def edit_image(
         n: Number of edited images to generate (1-10)
         output_dir: Directory to save edited images
         filename_prefix: Prefix for edited image filenames
-        working_directory: Base directory for resolving relative paths (optional, defaults to current PWD)
     
     Returns:
         Information about the edited images and their file paths
@@ -208,7 +208,7 @@ def edit_image(
         # Handle mask if provided
         mask_data = None
         if mask_path:
-            resolved_mask_path = resolve_path(mask_path)
+            resolved_mask_path = resolve_path(mask_path, working_directory)
             if not resolved_mask_path.exists():
                 return f"Error: Mask file '{mask_path}' not found"
             
@@ -335,11 +335,11 @@ def edit_image(
 @mcp.tool()
 def create_image_variations(
     image_path: str,
+    working_directory: str,
     n: int = 2,
     size: Optional[str] = "1024x1024",
     output_dir: str = "./image_variations",
-    filename_prefix: str = "variation",
-    working_directory: str = None
+    filename_prefix: str = "variation"
 ) -> str:
     """
     Create variations of an existing image using DALL-E 2.
@@ -347,11 +347,11 @@ def create_image_variations(
     
     Args:
         image_path: Path to the source image (must be square PNG, less than 4MB)
+        working_directory: Base directory for resolving relative paths (required)
         n: Number of variations to generate (1-10, default: 2)
         size: Size of generated variations ("256x256", "512x512", or "1024x1024")
         output_dir: Directory to save variation images
         filename_prefix: Prefix for variation image filenames
-        working_directory: Base directory for resolving relative paths (optional, defaults to current PWD)
     
     Returns:
         Information about the generated variations and their file paths

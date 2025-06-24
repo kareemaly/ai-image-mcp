@@ -72,15 +72,15 @@ def _analyze_image_with_cache(resolved_path: Path, prompt: str, operation: str, 
     return result
 
 @mcp.tool()
-def describe_image(image_path: str, prompt: str = "Please describe this image in detail.", working_directory: str = None) -> str:
+def describe_image(image_path: str, working_directory: str, prompt: str = "Please describe this image in detail.") -> str:
     """
     Analyze an image and provide a detailed description using OpenAI's Vision API.
     Uses caching to avoid repeated API calls for the same image and prompt.
     
     Args:
         image_path: Path to the image file (supports PNG, JPEG, GIF, WebP)
+        working_directory: Base directory for resolving relative paths (required)
         prompt: Custom prompt for the image analysis (optional)
-        working_directory: Base directory for resolving relative paths (optional, defaults to current PWD)
     
     Returns:
         Detailed description of the image content
@@ -107,15 +107,15 @@ def describe_image(image_path: str, prompt: str = "Please describe this image in
         return f"Error analyzing image: {str(e)}"
 
 @mcp.tool()
-def analyze_image_content(image_path: str, analysis_type: str = "general", working_directory: str = None) -> str:
+def analyze_image_content(image_path: str, working_directory: str, analysis_type: str = "general") -> str:
     """
     Analyze specific aspects of an image using OpenAI's Vision API.
     Uses caching to avoid repeated API calls for the same image and analysis type.
     
     Args:
         image_path: Path to the image file
+        working_directory: Base directory for resolving relative paths (required)
         analysis_type: Type of analysis - "general", "objects", "text", "colors", "composition", "emotions"
-        working_directory: Base directory for resolving relative paths (optional, defaults to current PWD)
     
     Returns:
         Targeted analysis of the image based on the specified type
@@ -155,7 +155,7 @@ def analyze_image_content(image_path: str, analysis_type: str = "general", worki
         return f"Error analyzing image: {str(e)}"
 
 @mcp.tool()
-def compare_images(image1_path: str, image2_path: str, comparison_focus: str = "similarities and differences", working_directory: str = None) -> str:
+def compare_images(image1_path: str, image2_path: str, working_directory: str, comparison_focus: str = "similarities and differences") -> str:
     """
     Compare two images and highlight their similarities and differences.
     Uses caching for individual image analysis to improve performance.
@@ -163,19 +163,19 @@ def compare_images(image1_path: str, image2_path: str, comparison_focus: str = "
     Args:
         image1_path: Path to the first image file
         image2_path: Path to the second image file
+        working_directory: Base directory for resolving relative paths (required)
         comparison_focus: What to focus on in the comparison (e.g., "colors", "objects", "composition", "similarities and differences")
-        working_directory: Base directory for resolving relative paths (optional, defaults to current PWD)
     
     Returns:
         Detailed comparison of the two images
     """
     try:
         # Analyze both images first using the cached describe_image function
-        desc1 = describe_image(image1_path, f"Describe this image focusing on {comparison_focus}.", working_directory)
+        desc1 = describe_image(image1_path, working_directory, f"Describe this image focusing on {comparison_focus}.")
         if desc1.startswith("Error"):
             return f"Error with first image: {desc1}"
         
-        desc2 = describe_image(image2_path, f"Describe this image focusing on {comparison_focus}.", working_directory)
+        desc2 = describe_image(image2_path, working_directory, f"Describe this image focusing on {comparison_focus}.")
         if desc2.startswith("Error"):
             return f"Error with second image: {desc2}"
         
@@ -186,14 +186,14 @@ def compare_images(image1_path: str, image2_path: str, comparison_focus: str = "
         return f"Error comparing images: {str(e)}"
 
 @mcp.tool()
-def get_image_metadata(image_path: str, working_directory: str = None) -> str:
+def get_image_metadata(image_path: str, working_directory: str) -> str:
     """
     Get detailed metadata and technical information about an image file.
     Note: This function does not use caching as it reads file system info directly.
     
     Args:
         image_path: Path to the image file
-        working_directory: Base directory for resolving relative paths (optional, defaults to current PWD)
+        working_directory: Base directory for resolving relative paths (required)
     
     Returns:
         Technical metadata and information about the image
