@@ -15,32 +15,43 @@ from utils.openai_client import (
 
 @mcp.tool()
 def generate_image(
+    working_dir: str,
     prompt: str,
     model: str = "dall-e-3",
     size: Optional[str] = None,
     quality: Optional[str] = None,
     style: Optional[str] = None,
     n: int = 1,
-    output_dir: str = "./generated_images",
+    output_dir: str = "generated_images",
     filename_prefix: str = "generated"
 ) -> str:
     """
     Generate images from text prompts using OpenAI's image generation models.
     
     Args:
+        working_dir: Absolute path to the working directory for file operations
         prompt: Text description of the desired image (max 32000 chars for gpt-image-1, 4000 for dall-e-3, 1000 for dall-e-2)
         model: Model to use - "dall-e-2", "dall-e-3", or "gpt-image-1" (default: dall-e-3)
         size: Image size - varies by model (e.g., "1024x1024", "1792x1024" for dall-e-3)
         quality: Quality setting - varies by model ("standard", "hd" for dall-e-3)
         style: Style for dall-e-3 - "vivid" or "natural" (default: vivid)
         n: Number of images to generate (1-10, dall-e-3 only supports 1)
-        output_dir: Directory to save generated images
+        output_dir: Directory relative to working_dir to save generated images
         filename_prefix: Prefix for generated image filenames
     
     Returns:
         Information about the generated images and their file paths
     """
     try:
+        # Validate working directory
+        working_path = Path(working_dir)
+        if not working_path.is_absolute():
+            return f"Error: working_dir must be an absolute path, got: {working_dir}"
+        if not working_path.exists():
+            return f"Error: working_dir does not exist: {working_dir}"
+        if not working_path.is_dir():
+            return f"Error: working_dir is not a directory: {working_dir}"
+        
         # Validate parameters
         validation = validate_image_generation_params(model, size, quality, style, n=n)
         if "errors" in validation:
@@ -55,8 +66,8 @@ def generate_image(
         if len(prompt) > max_prompt_lengths.get(model, 1000):
             return f"Error: Prompt too long for {model}. Maximum length: {max_prompt_lengths[model]} characters"
         
-        # Create output directory
-        output_path = Path(output_dir)
+        # Create output directory relative to working directory
+        output_path = working_path / output_dir
         output_path.mkdir(parents=True, exist_ok=True)
         
         # Get OpenAI client
@@ -139,9 +150,9 @@ def generate_image(
 
 @mcp.tool()
 def edit_image(
+    working_dir: str,
     image_path: str,
     prompt: str,
-    working_directory: str,
     mask_path: Optional[str] = None,
     model: str = "gpt-image-1",
     size: Optional[str] = None,
@@ -155,15 +166,15 @@ def edit_image(
     Supports gpt-image-1 and dall-e-2 models.
     
     Args:
-        image_path: Path to the image to edit (PNG, WebP, JPG for gpt-image-1; PNG for dall-e-2)
+        working_dir: Absolute path to the working directory for file operations
+        image_path: Path to the image to edit relative to working_dir (PNG, WebP, JPG for gpt-image-1; PNG for dall-e-2)
         prompt: Description of the desired edit (max 32000 chars for gpt-image-1, 1000 for dall-e-2)
-        working_directory: Base directory for resolving relative paths (required)
         mask_path: Optional path to mask image (PNG with transparent areas indicating edit regions)
         model: Model to use - "gpt-image-1" or "dall-e-2" (default: gpt-image-1)
         size: Output image size
         quality: Quality setting (gpt-image-1 only)
         n: Number of edited images to generate (1-10)
-        output_dir: Directory to save edited images
+        output_dir: Directory relative to working_dir to save edited images
         filename_prefix: Prefix for edited image filenames
     
     Returns:
@@ -187,8 +198,17 @@ def edit_image(
         if len(prompt) > max_prompt_lengths.get(model, 1000):
             return f"Error: Prompt too long for {model}. Maximum length: {max_prompt_lengths[model]} characters"
         
+        # Validate working directory
+        working_path = Path(working_dir)
+        if not working_path.is_absolute():
+            return f"Error: working_dir must be an absolute path, got: {working_dir}"
+        if not working_path.exists():
+            return f"Error: working_dir does not exist: {working_dir}"
+        if not working_path.is_dir():
+            return f"Error: working_dir is not a directory: {working_dir}"
+        
         # Validate image path with clear error messages
-        is_valid, error_message, resolved_image_path = validate_image_path(image_path, "read", working_directory)
+        is_valid, error_message, resolved_image_path = validate_image_path(image_path, "read", working_dir)
         if not is_valid:
             return error_message
         
@@ -208,7 +228,7 @@ def edit_image(
         # Handle mask if provided
         mask_data = None
         if mask_path:
-            resolved_mask_path = resolve_path(mask_path, working_directory)
+            resolved_mask_path = resolve_path(mask_path, working_dir)
             if not resolved_mask_path.exists():
                 return f"Error: Mask file '{mask_path}' not found"
             
@@ -219,8 +239,8 @@ def edit_image(
             with open(resolved_mask_path, 'rb') as f:
                 mask_data = f.read()
         
-        # Create output directory
-        output_path = Path(output_dir)
+        # Create output directory relative to working directory
+        output_path = working_path / output_dir
         output_path.mkdir(parents=True, exist_ok=True)
         
         # Get OpenAI client
@@ -334,8 +354,8 @@ def edit_image(
 
 @mcp.tool()
 def create_image_variations(
+    working_dir: str,
     image_path: str,
-    working_directory: str,
     n: int = 2,
     size: Optional[str] = "1024x1024",
     output_dir: str = "./image_variations",
@@ -346,11 +366,11 @@ def create_image_variations(
     Only supports dall-e-2 model.
     
     Args:
-        image_path: Path to the source image (must be square PNG, less than 4MB)
-        working_directory: Base directory for resolving relative paths (required)
+        working_dir: Absolute path to the working directory for file operations
+        image_path: Path to the source image relative to working_dir (must be square PNG, less than 4MB)
         n: Number of variations to generate (1-10, default: 2)
         size: Size of generated variations ("256x256", "512x512", or "1024x1024")
-        output_dir: Directory to save variation images
+        output_dir: Directory relative to working_dir to save variation images
         filename_prefix: Prefix for variation image filenames
     
     Returns:
@@ -365,8 +385,17 @@ def create_image_variations(
         if size and size not in valid_sizes:
             return f"Error: Invalid size '{size}'. Must be one of: {', '.join(valid_sizes)}"
         
+        # Validate working directory
+        working_path = Path(working_dir)
+        if not working_path.is_absolute():
+            return f"Error: working_dir must be an absolute path, got: {working_dir}"
+        if not working_path.exists():
+            return f"Error: working_dir does not exist: {working_dir}"
+        if not working_path.is_dir():
+            return f"Error: working_dir is not a directory: {working_dir}"
+        
         # Validate image path with clear error messages
-        is_valid, error_message, resolved_image_path = validate_image_path(image_path, "read", working_directory)
+        is_valid, error_message, resolved_image_path = validate_image_path(image_path, "read", working_dir)
         if not is_valid:
             return error_message
         
@@ -403,8 +432,8 @@ def create_image_variations(
                     f"• Suggestion: Crop or resize the image to make it square (e.g., 1024x1024)."
                 )
         
-        # Create output directory
-        output_path = Path(output_dir)
+        # Create output directory relative to working directory
+        output_path = working_path / output_dir
         output_path.mkdir(parents=True, exist_ok=True)
         
         # Get OpenAI client
@@ -456,18 +485,29 @@ def create_image_variations(
         return f"Error creating image variations: {str(e)}"
 
 @mcp.tool()
-def list_generated_images(directory: str = "./generated_images") -> str:
+def list_generated_images(working_dir: str, directory: str = "generated_images") -> str:
     """
     List all generated images in a directory with metadata.
     
     Args:
-        directory: Directory to scan for generated images
+        working_dir: Absolute path to the working directory for file operations
+        directory: Directory relative to working_dir to scan for generated images
     
     Returns:
         List of generated images with their metadata
     """
     try:
-        dir_path = Path(directory)
+        # Validate working directory
+        working_path = Path(working_dir)
+        if not working_path.is_absolute():
+            return f"Error: working_dir must be an absolute path, got: {working_dir}"
+        if not working_path.exists():
+            return f"Error: working_dir does not exist: {working_dir}"
+        if not working_path.is_dir():
+            return f"Error: working_dir is not a directory: {working_dir}"
+        
+        # Create directory path relative to working directory
+        dir_path = working_path / directory
         if not dir_path.exists():
             return f"Directory '{directory}' does not exist"
         

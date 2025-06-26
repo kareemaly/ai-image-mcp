@@ -72,22 +72,31 @@ def _analyze_image_with_cache(resolved_path: Path, prompt: str, operation: str, 
     return result
 
 @mcp.tool()
-def describe_image(image_path: str, working_directory: str, prompt: str = "Please describe this image in detail.") -> str:
+def describe_image(working_dir: str, image_path: str, prompt: str = "Please describe this image in detail.") -> str:
     """
     Analyze an image and provide a detailed description using OpenAI's Vision API.
     Uses caching to avoid repeated API calls for the same image and prompt.
     
     Args:
-        image_path: Path to the image file (supports PNG, JPEG, GIF, WebP)
-        working_directory: Base directory for resolving relative paths (required)
+        working_dir: Absolute path to the working directory for file operations
+        image_path: Path to the image file relative to working_dir (supports PNG, JPEG, GIF, WebP)
         prompt: Custom prompt for the image analysis (optional)
     
     Returns:
         Detailed description of the image content
     """
     try:
+        # Validate working directory
+        working_path = Path(working_dir)
+        if not working_path.is_absolute():
+            return f"Error: working_dir must be an absolute path, got: {working_dir}"
+        if not working_path.exists():
+            return f"Error: working_dir does not exist: {working_dir}"
+        if not working_path.is_dir():
+            return f"Error: working_dir is not a directory: {working_dir}"
+        
         # Validate image path with clear error messages
-        is_valid, error_message, resolved_path = validate_image_path(image_path, "read", working_directory)
+        is_valid, error_message, resolved_path = validate_image_path(image_path, "read", working_dir)
         if not is_valid:
             return error_message
         
@@ -107,14 +116,14 @@ def describe_image(image_path: str, working_directory: str, prompt: str = "Pleas
         return f"Error analyzing image: {str(e)}"
 
 @mcp.tool()
-def analyze_image_content(image_path: str, working_directory: str, analysis_type: str = "general") -> str:
+def analyze_image_content(working_dir: str, image_path: str, analysis_type: str = "general") -> str:
     """
     Analyze specific aspects of an image using OpenAI's Vision API.
     Uses caching to avoid repeated API calls for the same image and analysis type.
     
     Args:
-        image_path: Path to the image file
-        working_directory: Base directory for resolving relative paths (required)
+        working_dir: Absolute path to the working directory for file operations
+        image_path: Path to the image file relative to working_dir
         analysis_type: Type of analysis - "general", "objects", "text", "colors", "composition", "emotions"
     
     Returns:
@@ -133,8 +142,17 @@ def analyze_image_content(image_path: str, working_directory: str, analysis_type
         return f"Error: Invalid analysis type. Choose from: {', '.join(prompts.keys())}"
     
     try:
+        # Validate working directory
+        working_path = Path(working_dir)
+        if not working_path.is_absolute():
+            return f"Error: working_dir must be an absolute path, got: {working_dir}"
+        if not working_path.exists():
+            return f"Error: working_dir does not exist: {working_dir}"
+        if not working_path.is_dir():
+            return f"Error: working_dir is not a directory: {working_dir}"
+        
         # Validate image path with clear error messages
-        is_valid, error_message, resolved_path = validate_image_path(image_path, "read", working_directory)
+        is_valid, error_message, resolved_path = validate_image_path(image_path, "read", working_dir)
         if not is_valid:
             return error_message
         
@@ -155,15 +173,15 @@ def analyze_image_content(image_path: str, working_directory: str, analysis_type
         return f"Error analyzing image: {str(e)}"
 
 @mcp.tool()
-def compare_images(image1_path: str, image2_path: str, working_directory: str, comparison_focus: str = "similarities and differences") -> str:
+def compare_images(working_dir: str, image1_path: str, image2_path: str, comparison_focus: str = "similarities and differences") -> str:
     """
     Compare two images and highlight their similarities and differences.
     Uses caching for individual image analysis to improve performance.
     
     Args:
-        image1_path: Path to the first image file
-        image2_path: Path to the second image file
-        working_directory: Base directory for resolving relative paths (required)
+        working_dir: Absolute path to the working directory for file operations
+        image1_path: Path to the first image file relative to working_dir
+        image2_path: Path to the second image file relative to working_dir
         comparison_focus: What to focus on in the comparison (e.g., "colors", "objects", "composition", "similarities and differences")
     
     Returns:
@@ -171,11 +189,11 @@ def compare_images(image1_path: str, image2_path: str, working_directory: str, c
     """
     try:
         # Analyze both images first using the cached describe_image function
-        desc1 = describe_image(image1_path, working_directory, f"Describe this image focusing on {comparison_focus}.")
+        desc1 = describe_image(working_dir, image1_path, f"Describe this image focusing on {comparison_focus}.")
         if desc1.startswith("Error"):
             return f"Error with first image: {desc1}"
         
-        desc2 = describe_image(image2_path, working_directory, f"Describe this image focusing on {comparison_focus}.")
+        desc2 = describe_image(working_dir, image2_path, f"Describe this image focusing on {comparison_focus}.")
         if desc2.startswith("Error"):
             return f"Error with second image: {desc2}"
         
@@ -186,21 +204,30 @@ def compare_images(image1_path: str, image2_path: str, working_directory: str, c
         return f"Error comparing images: {str(e)}"
 
 @mcp.tool()
-def get_image_metadata(image_path: str, working_directory: str) -> str:
+def get_image_metadata(working_dir: str, image_path: str) -> str:
     """
     Get detailed metadata and technical information about an image file.
     Note: This function does not use caching as it reads file system info directly.
     
     Args:
-        image_path: Path to the image file
-        working_directory: Base directory for resolving relative paths (required)
+        working_dir: Absolute path to the working directory for file operations
+        image_path: Path to the image file relative to working_dir
     
     Returns:
         Technical metadata and information about the image
     """
     try:
+        # Validate working directory
+        working_path = Path(working_dir)
+        if not working_path.is_absolute():
+            return f"Error: working_dir must be an absolute path, got: {working_dir}"
+        if not working_path.exists():
+            return f"Error: working_dir does not exist: {working_dir}"
+        if not working_path.is_dir():
+            return f"Error: working_dir is not a directory: {working_dir}"
+        
         # Validate image path with clear error messages
-        is_valid, error_message, resolved_path = validate_image_path(image_path, "read", working_directory)
+        is_valid, error_message, resolved_path = validate_image_path(image_path, "read", working_dir)
         if not is_valid:
             return error_message
         
